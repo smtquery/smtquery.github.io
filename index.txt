@@ -1,0 +1,458 @@
+= BASC: Benchmark Analysis for String Constraints
+We propose BASC: a Benchmark Analysis tool for String Constraints. BASC is implemented in Python 3, and offers a collection of analysis and information extraction tools for a comprehensive data base of string benchmarks (presented in SMT-LIB format), based on an SQL-centred language called QLANG.
+
+The companion paper, entitled BASC: Benchmark Analysis for String Constraints, is available HERE *insert link after rechecking the paper*.
+
+:toc: left
+:stem: latexmath
+
+On these pages we describe how to setup BASC, details on the implementation and how to extend the tool, as well as some examples of currently supported queries.
+
+== Installing BASC using the provided Docker Image
+Use GIT to clone our repository
+ 
+    git clone https://github.com/b4sc/code.git
+
+Change to the folder `code` and execute 
+
+    docker build . -t basc
+
+to build the docker image of BASC. This step takes a couple of minutes since it's downloading all required dependencies. Afterwards, we start the container by executing
+
+    docker run -it -d basc /bin/bash
+
+For convenience, Linux or Mac OSX users are able to use prebuild scripts to run BASC. To to so, execute `chmod +x basc_exe && chmod +x basc_cp` which provides you two easy ways to use scripts for executing QLang and copying QLang's output to your local machine.
+
+    ./basc_exe
+
+prints the prompt, allowing you to execute a QLang query. To pose another query, simply call `./basc_exe` again.
+
+    ./basc_cp <destination_folder>
+
+allows copying plots, exported SMT-LIB files, and other generated content to your local machine. In case you encounter an execution error (which might be the case to system restrictions of running bash scripts), simply follow the next lines.
+
+On Windows machines we have to search for our container id by executing
+
+    docker container ls -a
+
+Afterwards, we are able to execute QLang queries by typing
+
+    docker exec -it <YOUR_CONTAINER_ID> python3 /BASC/bin/smtquery qlang
+    
+== Implementation Details and Defining own Predicates, Functions, and Extractors
+We briefly overview the syntax of QLANG, as given in our companion paper, to ease understanding of the following subsections.
+
+[stem]
+++++
+\begin{array}{lcll}
+  S & \rightarrow & \texttt{Select } f_s \texttt{ From } d \texttt{ Where } c \!\hspace{3mm} | \hspace{3mm}\! \texttt{Extract } f_e \texttt{ From } d \texttt{ Where } c \texttt{ Apply } \text{Function} \\
+  f_s & \rightarrow & \texttt{Name} \hspace{3mm} | \hspace{3mm} \texttt{Hash} \hspace{3mm} | \hspace{3mm} \texttt{Content}\\
+  f_e & \rightarrow & \texttt{SMTLib} \hspace{3mm} | \hspace{3mm}{} \texttt{SMTPlot}% \hspace{3mm} | \hspace{3mm} \texttt{LINEARLENGTH} \hspace{3mm} | \hspace{3mm} \texttt{REGEX} \hspace{3mm} | \hspace{3mm} \texttt{HOFUNCTION} \\ & & 
+                    \hspace{3mm} | \hspace{3mm} \dots\\ %\hspace{3mm} | \hspace{3mm} f_e\texttt{, } f_e\\
+  d & \rightarrow & \texttt{*} \hspace{3mm} | \hspace{3mm} \text{Set} \hspace{3mm} | \hspace{3mm} \text{Set}\texttt{:}\text{Track} \hspace{3mm} | \hspace{3mm} d\texttt{, } d\\
+  c & \rightarrow & \text{Predicate} \hspace{3mm} | \hspace{3mm} (c \texttt{ And } c) \hspace{3mm} | \hspace{3mm} (c \texttt{ Or } c)  \hspace{3mm} | \hspace{3mm} (\texttt{Not } c) \hspace{3mm} | \hspace{3mm} \texttt{True} \hspace{3mm} | \hspace{3mm} \texttt{False}\\
+  \end{array}
+++++
+
+The semantic of a ``Select`` query is based on the data set stem:[d]. We either choose all benchmarks (*) or we are more precise in picking a particular benchmark set, respectively a corresponding track. The selection is based on a Boolean expression stem:[c], constructed from basic stem:[Predicates]. Currently, BASC implements several default predicates, but our interface allows also defining custom predicates. We use stem:[f_s] to choose a suitable output which can be the instance name, the file's hash value, or simply the SMT-LIB instance.
+
+The ``Extract`` query allows exporting instances for which a Boolean expression (again involving predicates) evaluates to ``true``. Additionally, while executing an ``Extract`` query, we can directly perform modifications to the extracted instances using a ``Function`` (called apply-function in the following). Finally, the argument stem:[f_e] of an ``Extract`` query (called extractor in the following) specifies the type of output format for the matching (and potentially modified) instances.
+
+=== Fundamentals on defining predicates
+In our implementation, a predicate is based on an interface in ``smtquery.smtcon.exprfun`` which corresponds to collecting data for the newly defined predicate. After providing a name and a version number, the user implements an ``apply``- and a ``merge``-function (as also explained in the companion paper). The ``apply``-function receives an AST expression and a pointer to previously calculated data and performs requested modifications to the data. Since the ``apply``-function computes the information bottom-up within our AST, the user also provides a neutral element for this computation, which might be an empty dictionary, an empty list, or simply an integer. The interfaces also requires the implementation of a ``merge``-function which aims to combine the data received from children-expressions within the AST in a node. This functions again behaves as implemented by the user. 
+Once this information gathering interface is implemented, we register the application within ``smtquery.intel.plugin.probes.intels`` by providing a unique identifier which points to a tuple consisting of the function-implementations and the neutral element. Further, we register our predicate at ``smtquery.intel.plugin.probes.predicates`` providing a unique name and the predicate. Afterwards, the name is directly usable within our query language. 
+
+To summarise, the user implements the above functions to gather information. Afterwards, this information is available to be used within Boolean predicates which are accessible within a QLang query.
+
+==== Example: constraint has specific atom
+In order to filter our queries for word equations, regex, or linear length constraint, we implement the following function in ``smtquery.smtcon.exprfun``:
+
+```
+class HasAtom(ExprFun):
+    def __init__(self):
+        super().__init__ ("HasAtom","0.0.1")
+        
+    def apply (self, expr, data):
+        if expr.kind() not in data:
+            data[expr.kind()] = 0
+        data[expr.kind()]+=1
+        return data
+
+    def merge(self, expr, data):
+        d_new = dict()
+        for d in data:
+            for k in set(d_new.keys()).union(set(d.keys())):
+                if k in d_new and k in d:
+                    d_new[k]+=d[k]
+                elif k in d:
+                    d_new[k] = d[k]
+        return d_new
+```
+
+The apply-function essential counts occurrences of particular kind, while the merge functions joins the collected information of their children. Once this function is added, we register the "intel" within our intel-gatherer located in ``smtquery.intel.plugins.probes`` and modify the function ``Probes.intel()`` as following:
+
+```
+    def intels (self):
+        return {
+        	...
+            "has" : (smtquery.smtcon.exprfun.HasAtom(),dict()),
+            ...
+        }
+```
+When querying benchmarks this addition now collects the information implemented in our ``HasAtom`` class and stores it for each used benchmark. Next, we define our predicate by simply adding a function to ``smtquery.intel.plugins.probes``. The actual implementation is done as following:
+
+```
+def hasKind(kind,smtfile):
+    if kind in smtfile.Probes.get_intel()["has"]:
+        return smtquery.qlang.predicates.Trool.TT
+    else:
+        return smtquery.qlang.predicates.Trool.FF
+```
+
+Lastly, we register this function within our lists of predicates, making it available with QLANG queries. We simply modify within ``smtquery.intel.plugins.probes`` the function ``Probes.predicates()`` as following:
+
+```
+    def predicates (self):
+        return {
+            ...
+            "hasWEQ" : partial(hasKind,Kind.WEQ),
+            "hasLinears" : partial(hasKind,Kind.LENGTH_CONSTRAINT),
+            "hasRegex" : partial(hasKind,Kind.REGEX_CONSTRAINT),
+            ...
+        }
+```
+This allows using ``hasWEQ``, ``hasLinears``, and ``hasRegex`` with a custom query.
+
+
+=== Fundamentals on defining apply-functions
+The ``apply``-function, primarily allowing modifications of an AST, requires the implementation of a base-class defined within ``smtquery.apply``. We provide a name and the expected behaviour, making sure to return an internal SMT-LIB object. After the successful implementation, we register this new class within our ``PullExtractor`` by providing its name. Again, afterwards, the ``apply``-function is immediately usable within the query language.
+
+==== Example: a dummy apply-function
+In order to create a new apply-function we simply build a class within ``smtquery.apply`` having the following structure:
+
+```
+class DummyApply:
+    @staticmethod
+    def getName ():
+        return "DummyApply"
+
+    def __call__  (self,smtfile):
+        return smtfile
+
+def PullExtractor():
+    return [DummyApply]
+```
+
+The class primarily consists of a ``getName`` function proving a name for our new function and has to be callable (``__call__``). Within the call we receive the current benchmark and odd to perform modifications according to our needs. It is important to return a potentially modified ``smtfile`` since the output is processed further within our tool. Secondly, we provide a ``PullExtractor`` function which immediately allows using the newly defined apply-function within a custom query.
+
+=== Fundamentals on defining extractors
+The extractor allows exporting potentially modified benchmarks in an own format. BASC allows either printing the converted data directly to the terminal or redirecting it to a file using \texttt{smtquery.ui.Outputter}. To name a few examples, we might want to translate the benchmarks into a different format, export some plot, or obtain a modified SMT-LIB instance. To implement an extractor, we proceed similarly to the previously seen ``apply``-function and implement a simple class within ``smtquery.extract``. We provide a name and a function preforming the export based on our AST using the ``Outputter``. We again register our new extractor to the ``PullExtractor`` by simply providing its class name, allowing us to use it in the query language. 
+
+==== Example: a dummy extractor
+Similar to the definition of a new apply-function for a new extractor we simply provide a class in ``smtquery.extract`` being based on the following structure:
+
+```
+class DummyPrinter:
+    @staticmethod
+    def getName ():
+        return "DummyExtract"
+
+    def finalise(self,total):
+        pass
+        
+    def __call__  (self,smtfile):
+        with smtquery.ui.output.makePlainMessager () as mess:
+            mess.message (smtfile.getName())
+
+
+def PullExtractor():
+    return [DummyPrinter]
+```
+
+The class primarily consists of a ``getName`` function proving a name for our new function, a ``finalise`` function which is called right after the extractor was used (e.g. to pass summary data), and has to be callable (``__call__``). Within the call we again receive the current benchmark. The return value is completely up to a users purpose. We might want to export a graph, a table, a picture, or anything else of interest. We do not restrict the output in any sense. Within the above example we simply print the SMT-LIB instance's name in our terminal. Last,we again provide a ``PullExtractor`` function which immediately allows using the newly defined extractor within a custom query.
+
+=== Available Predicates, Functions, and Extractors
+The tool is currently under heavily development. Stated today we offer the following predicates, functions and extractors which will be extended continuously. We plan to offer a shared platform to exchange custom implementations of the aforementioned tools.
+
+==== Predicates 
+To be used within the ``Where`` part of the query. All predicates can be combined using the common logic connectives, e.g. and, or, and not.
+
+	- ``hasWEQ``:  filters to all instances which contain word equations. 
+	- ``hasLinears``:  filters to all instances which contain linear length constraints.
+	- ``hasRegex``:  filters to all instances which contain regular membership predicates.
+	- ``isSimpleRegex``:  filters to all instances which are of the simple regular expression fragment (see _String theories involving regular membership predicates: From practice to theory and back_ by Berzish et. al.).
+	- ``isSimpleRegexConcatenation``:  filters to all instances which are of the simple regular expression fragment with concatenation (see _String theories involving regular membership predicates: From practice to theory and back_ by Berzish et. al.).
+	- ``isUpperBounded``:  filters to all instances where the syntax of the formula allows obtaining a length upper bound for each string variable.
+	- ``isQuadratic``:  filters to all instances where each string variable is occurring at most twice.
+	- ``isPatternMatching``:  filters to all instances which only contain word equations of the kind stem:[\mathsf{x} = \alpha] where stem:[\mathsf{x}] is a variable not occurring anywhere else in the present formula and stem:[\alpha] is a string (potentially containing variables other than stem:[\mathsf{x}]).
+    - ``hasAtLeast5Variables`` : filters to all instances containing a least 5 string variables.
+	- ``isSAT(s)``: 	filters all instances where stem:[s \in \{\text{CVC4},\text{Z3Str3},\text{Z3Seq}\}] declared satisfiable.
+    - ``isUNSAT(s)``:     filters all instances where stem:[s \in \{\text{CVC4},\text{Z3Str3},\text{Z3Seq}\}] declared unsatisfiable.
+    - ``hasValidModel(s)``:     filters all instances where stem:[s \in \{\text{CVC4},\text{Z3Str3},\text{Z3Seq}\}] returned SAT with a valid model.
+    - ``isCorrect(s)``:     filters all instances where stem:[s \in \{\text{CVC4},\text{Z3Str3},\text{Z3Seq}\}] returned SAT with a valid model or UNSAT as the majority of used solvers.
+    - ``isFaster(s1,s2)``:     filters all instances where stem:[s1,s2 \in \{\text{CVC4},\text{Z3Str3},\text{Z3Seq}\}] and stem:[s1] determined some result quicker than stem:[s2]. 
+
+==== Functions
+To be used within the ``Apply`` part of the query.
+
+- ``Restrict2WEQ``: removes all other predicates than word equations.
+- ``Restrict2Length``: removes all other predicates than linear length constraints.
+- ``Restrict2RegEx``: removes all other predicates than regular expression membership queries.
+- ``RenameVariables``: renames all variables to a standard format (i.e. ``str01``, ``int01``).
+- ``DisjoinConstraints``: splits ``and``-concatenated boolean constraints into separate assertions.
+- ``SortConstraints``: lexicographically sorts all constraints.
+- ``ReduceNegations``: shortens sequences of ``not``, keeping the original polarity.
+- ``EqualsTrue``: simplifies constraints comparing boolean expressions to ``true``.
+
+==== Extractors
+To be used within the ``Extract`` part of the query.
+
+- ``MatchingPie``:  exports result as a pie chart.
+- ``CactusPlot``:  export result as a cactus plot.
+- ``SMTPlot``:  exports the instances visualized as tree diagram.
+- ``VarDepPlot``:  exports the dependency plots of all instances.
+- ``ResultsTable``:  prints the summary results in terminal.
+- ``SMTLib``:  exports the resulting instances as SMT-LIB files.
+- ``Count``:  prints matching instances count and distribution.
+- ``InstanceTable``:  prints the matching instances and solver's results.
+
+== Adding new Benchmarks and Solvers (and reinitialising the database)
+We briefly overview adding new benchmarks and solvers to BASC.
+
+=== Adding new Benchmarks
+New benchmarks following the SMT-LIB standard simply need to be placed into the folder ``data/smtfiles``. We require a certain folder structure when adding new benchmarks though: all benchmarks must be placed in a folder corresponding to the benchmarks' set name containing subfolders naming each individual track of the set. Within these subfolders we store our actual SMT-LIB files. E.g. the benchmark set ``kaluza`` has multiple tracks -- we create a parent folder ``kaluza`` which contains subfolders ``BigSAT``,``BigUNSAT``, ``SmallSAT``, and ``SmallUNSAT`` corresponding to each track, and furthermore containing the individual instances.
+
+Once our new instances are placed in we execute ``bin/smtquery allocateNew`` to register the benchmarks within our database. Keep in mind that these instance do not have an attached solver's result. The result will be added by the time a query asking for a solver's answer is executed automatically.
+
+=== Adding new Solvers
+To add a new solver being capable of parsing SMT-LIB we implement a new class in ``smtquery.solvers`` as following:
+
+```
+import smtquery.solvers.solver as solver
+
+class Dummy(solver.Solver):
+    def __init__(self,binarypath):
+        super().__init__(binarypath)
+        self._path = binarypath
+        
+    def getVersion (self):
+        return "0.0.1"
+
+    def getName (self):
+        return "DummySolver"
+    
+    def preprocessSMTFile  (self, origsmt, newsmt):
+        newsmt = origsmt
+
+    def buildCMDList (self,smtfilepath):
+        return [self._path,"command","line","arguments",smtfilepath]
+``` 
+
+The class provides a function ``getVersion`` and ``getName`` to return it's version respectively having the type string. Within the ``preprocessSMTFile`` function we are able to apply modifications to a passed on SMT file. For example some solvers require ``(get-model)`` in the end of each SMT-LIB instance in order to produce a model. The ``buildCMDList`` function allows adding additional parameters to our solver's call. ``self._path`` corresponds to the path of our executable and ``smtfilepath`` links to the actual instance.
+
+Next, we modify ``data/conf.yml`` register the solver. We simply expand the solver adding
+
+```
+solvers:
+  ...
+  Dummy:
+    binary: /usr/bin/dummy
+```
+
+Afterwards our solver is ready to be used in queries (e.g. ``isSAT(Dummy)``).
+
+== Some Usage Examples
+
+We present two examples inspired by the generic examples from our paper. We ran the queries using four different sets of benchmarks, namely AppScan, JOACO-Suite, Pisa, and Woorpje, having a total of 923 instances.
+
+=== Generic Example 1 
+
+Given a syntactically restricted subset of string constraints, determine instances belonging to this subset, and their distribution within benchmarks. 
+
+We can give a concrete case of the problem stated in this generic example. We investigate the distribution of quadratic equations (a well-studied class of word equations, which can be easily solved using the so-called Nielsen transformations) in the benchmarks. 
+
+- For each benchmark, determine all instances consisting of quadratic equations only:
+
+        Select Name From * Where isQuadratic
+
+Ouput:
+```
+['joacosuite:JOACO:ChangePaymentMethod_Vx0.smt2']
+['joacosuite:JOACO:ChangePaymentMethod_VxA2.smt2']
+['joacosuite:JOACO:ChangePaymentMethod_VxA3.smt2']
+['joacosuite:JOACO:ChangePaymentMethod_VxA6.smt2']
+...
+```
+
+- Count how many such instances are in each benchmark, and compute the ratio between the number of quadratic instances and the overall number of instances in each benchmark (e.g. for JOACO-Suite).
+
+        Extract Count From joacosuite Where isQuadratic
+
+Ouput:
+```
+joacosuite:*
+
+Total matching instances: 51 of 94 within the selected set (54.25531914893617%).
+```
+
+
+Motivated by our paper from CAV 2021 (Berzish et. al.: An SMT Solver for Regular Expressions and Linear Arithmetic over String Length), we addressed the following concrete case of Example 1. We want to determine all instances containing regex-membership predicates, and their distribution within benchmarks. 
+
+- For each benchmark, determine all instances containing regex-membership predicates:
+
+    Select Name From * Where hasRegex
+
+Output:
+
+```
+['appscan:appscan:t02.smt2']
+['appscan:appscan:t03.smt2']
+['appscan:appscan:t04.smt2']
+['appscan:appscan:t05.smt2']
+['appscan:appscan:t07.smt2']
+...
+```
+
+- Count how many such instances are in each benchmark, and compute the ratio between the number of instances containing regex-membership predicates and the overall number of instances in each benchmark (e.g. for JOACO-Suite).
+
+    Extract Count From joacosuite Where hasRegex
+
+Output:
+
+```
+joacosuite:*
+
+Total matching instances: 76 of 94 within the selected set (80.85106382978724%).
+```
+
+
+=== Generic Example 2 
+
+For a given string-solver, understand the properties of instances on which it performs particularly well, and on which it performs badly (also in comparison to other solvers).
+
+We can give a concrete case related to the problem stated in this generic example. We would be interested in finding the set C of all the instances on which CVC4 provides a correct answer and Z3str3 either provides a wrong answer or is slower in providing the correct answer and the instances the set Z of all the instances on which Z3str3 provides a correct answer and CVC4 either provides a wrong answer or is slower in providing the correct answer. Then, for each of these sets, detect the number (and distribution) of instances which are non-quadratic and the number (and distribution) of instances containing regex-membership predicates. 
+
+- Collect, for each instance, the answers given by all solvers included in our tool. The supposedly-correct answer for this instance is the one given by the majority of these solvers in UNSAT cases and indicated by a correct model in case of SAT instances.
+    
+    Extract InstanceTable From * Where ((isCorrect(CVC4) and isCorrect(Z3Str3)) and isCorrect(Z3Seq)) 
+
+
+Output:
+
+```
+Instance                  Result CVC4      Time CVC4  Result Z3Seq      Time Z3Seq  Result Z3Str3      Time Z3Str3
+------------------------  -------------  -----------  --------------  ------------  ---------------  -------------
+appscan:appscan:t02.smt2  Satisfied        0.0458425  Satisfied          0.150052   Satisfied            0.0443905
+appscan:appscan:t06.smt2  Satisfied        0.028693   Satisfied          0.0362182  Satisfied            0.028693
+appscan:appscan:t07.smt2  Satisfied        0.0344792  Satisfied          0.0381027  Satisfied            0.0361539
+appscan:appscan:t08.smt2  Satisfied        0.33662    Satisfied          0.328544   Satisfied            0.173992
+```
+
+- Select for CVC4 all instances where CVC4 gives the right answer and either Z3str3 gives the wrong answer or it gives the right answer slower.
+
+    Select Name From * Where ((isCorrect(CVC4) and (not isCorrect(Z3Str3))) or (isCorrect(Z3Str3) and isFaster(CVC4,Z3Str3)))
+
+Output:
+
+```
+['appscan:appscan:t01.smt2']
+['appscan:appscan:t03.smt2']
+['appscan:appscan:t04.smt2']
+['appscan:appscan:t05.smt2']
+['appscan:appscan:t06.smt2']
+['appscan:appscan:t07.smt2']
+['joacosuite:JOACO:AuthorizationServlet0.smt2']
+['joacosuite:JOACO:BackDoors0.smt2']
+['joacosuite:JOACO:BlindNumericSqlInjection0.smt2']
+['joacosuite:JOACO:BlindStringSqlInjection0.smt2']
+['joacosuite:JOACO:ChangePaymentMethod_Vx0.smt2']
+['joacosuite:JOACO:ChangePaymentMethod_VxA0.smt2']
+['joacosuite:JOACO:ChangePaymentMethod_VxA2.smt2']
+['joacosuite:JOACO:ChangePaymentMethod_VxA3.smt2']
+['joacosuite:JOACO:ChangePaymentMethod_VxA6.smt2']
+...
+```
+
+
+- Count how many of the instances computed in step 2 are quadratic and how many contain regex-membership predicates.
+
+    Extract Count From * Where (((isCorrect(CVC4) and (not isCorrect(Z3Str3))) or (isCorrect(Z3Str3) and isFaster(CVC4,Z3Str3))) and isQuadratic)
+
+    Extract Count From * Where (((isCorrect(CVC4) and (not isCorrect(Z3Str3))) or (isCorrect(Z3Str3) and isFaster(CVC4,Z3Str3))) and hasRegex)
+
+Output:
+
+```
+Total matching instances: 194 of 923 within the selected set (21.018418201516795%). 
+```
+
+and
+
+```
+Total matching instances: 53 of 923 within the selected set (5.742145178764897%).
+```
+
+
+
+- Select for Z3str3 all instances where Z3str3 gives the right answer and either CVC4 gives the wrong answer or it gives the right answer slower.
+
+    Select Name From * Where ((isCorrect(Z3Str3) and (not isCorrect(CVC4))) or (isCorrect(CVC4) and isFaster(Z3Str3,CVC4)))
+
+Output:
+
+```
+['appscan:appscan:t02.smt2']
+['appscan:appscan:t06.smt2']
+['appscan:appscan:t08.smt2']
+['joacosuite:JOACO:AuthorizationServlet0.smt2']
+['joacosuite:JOACO:CommentDataServlet1.smt2']
+['joacosuite:JOACO:CommentDataServlet3.smt2']
+['joacosuite:JOACO:FileServlet1.smt2']
+['joacosuite:JOACO:ListTag0.smt2']
+['joacosuite:JOACO:ListTag1.smt2']
+...
+```
+
+- Count how many of the instances computed in step 4 are quadratic and how many contain regex-membership predicates.
+
+    Extract Count From * Where (((isCorrect(Z3Str3) and (not isCorrect(CVC4))) or (isCorrect(CVC4) and isFaster(Z3Str3,CVC4))) and isQuadratic)
+
+    Extract Count From * Where (((isCorrect(Z3Str3) and (not isCorrect(CVC4))) or (isCorrect(CVC4) and isFaster(Z3Str3,CVC4))) and hasRegex)
+
+Output:
+
+```
+Total matching instances: 34 of 923 within the selected set (3.6836403033586134%). 
+```
+
+and
+
+```
+
+
+Total matching instances: 19 of 923 within the selected set (2.058504875406284%). 
+```
+
+=== Running times of the above examples 
+
+We obtained the following running times by executing all queries in a sequence:
+
+|===
+| Query | Running time w/o cache (seconds) | Running time with cache (seconds)
+| ``Select Name From * Where isQuadratic`` | 188.56 | 5.07
+| ``Extract Count From joacosuite Where isQuadratic`` | 0.63 | 0.64
+| ``Select Name From * Where hasRegex`` | 4.87 | 5.03
+| ``Extract Count From joacosuite Where hasRegex`` | 0.62 | 0.64
+| ``Extract InstanceTable From * Where ((isCorrect(CVC4) and isCorrect(Z3Str3)) and isCorrect(Z3Seq))`` | 1585.29 | 15.7
+| ``Select Name From * Where ((isCorrect(CVC4) and (not isCorrect(Z3Str3))) or (isCorrect(Z3Str3) and isFaster(CVC4,Z3Str3)))`` | 15.95 | 15.85
+| ``Extract Count From * Where (((isCorrect(CVC4) and (not isCorrect(Z3Str3))) or (isCorrect(Z3Str3) and isFaster(CVC4,Z3Str3))) and isQuadratic)`` | 20.71 | 20.02
+| ``Extract Count From * Where (((isCorrect(CVC4) and (not isCorrect(Z3Str3))) or (isCorrect(Z3Str3) and isFaster(CVC4,Z3Str3))) and hasRegex)`` | 20.88 | 20.66
+| ``Select Name From * Where ((isCorrect(Z3Str3) and (not isCorrect(CVC4))) or (isCorrect(CVC4) and isFaster(Z3Str3,CVC4)))`` | 17.06 | 16.47
+| ``Extract Count From * Where (((isCorrect(Z3Str3) and (not isCorrect(CVC4))) or (isCorrect(CVC4) and isFaster(Z3Str3,CVC4))) and isQuadratic)`` | 19.37 | 19.33
+| ``Extract Count From * Where (((isCorrect(Z3Str3) and (not isCorrect(CVC4))) or (isCorrect(CVC4) and isFaster(Z3Str3,CVC4))) and hasRegex)`` | 19.41 | 19.79
+|===
+
+Note, the later queries use already cached data which causes almost identical running times for some of them.
+
+Also note that in numerous instances, where one is interested in analysing the strengths or weaknesses of solvers, we were not necessarily interested in having extremely fast query running times (as long as these times stay reasonable), but rather in having a tool that provides a correct more in-depth analysis of the properties (mostly, of combinatorial or automata theoretic nature) of the instances on which these solvers perform well or badly, respectively.
+
