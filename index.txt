@@ -29,7 +29,7 @@ prints the prompt, allowing you to execute a QLang query. To pose another query,
 
     ./basc_cp <destination_folder>
 
-allows copying plots, exported SMT-LIB files, and other generated content to your local machine. In case you encounter an execution error (which might be the case to system restrictions of running bash scripts), simply follow the next lines.
+allows copying plots, exported SMT-LIB files, and other generated content to your local machine. In particular, it is essential to execute this script after each extraction, in order to observe the results locally. In case you encounter an execution error (which might be the case to system restrictions of running bash scripts), simply follow the next lines.
 
 On Windows machines we have to search for our container id by executing
 
