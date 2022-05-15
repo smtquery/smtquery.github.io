@@ -437,21 +437,45 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 @media amzn-kf8{#header,#content,#footnotes,#footer{padding:0}}
 </style>
 </head>
-<body class="article">
+<body class="article toc2 toc-left">
 <div id="header">
 <h1>BASC: Benchmark Analysis for String Constraints</h1>
 <div class="details">
 <span id="author" class="author">We propose BASC: a Benchmark Analysis tool for String Constraints. BASC is implemented in Python 3, and offers a collection of analysis and information extraction tools for a comprehensive data base of string benchmarks (presented in SMT-LIB format), based on an SQL-centred language called QLANG.</span><br>
+</div>
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#_installing_basc_using_the_provided_docker_image">Installing BASC using the provided Docker Image</a></li>
+<li><a href="#_implementation_details_and_defining_own_predicates_functions_and_extractors">Implementation Details and Defining own Predicates, Functions, and Extractors</a>
+<ul class="sectlevel2">
+<li><a href="#_fundamentals_on_defining_predicates">Fundamentals on defining predicates</a></li>
+<li><a href="#_fundamentals_on_defining_apply_functions">Fundamentals on defining apply-functions</a></li>
+<li><a href="#_fundamentals_on_defining_extractors">Fundamentals on defining extractors</a></li>
+<li><a href="#_available_predicates_functions_and_extractors">Available Predicates, Functions, and Extractors</a></li>
+</ul>
+</li>
+<li><a href="#_adding_new_benchmarks_and_solvers_and_reinitialising_the_database">Adding new Benchmarks and Solvers (and reinitialising the database)</a>
+<ul class="sectlevel2">
+<li><a href="#_adding_new_benchmarks">Adding new Benchmarks</a></li>
+<li><a href="#_adding_new_solvers">Adding new Solvers</a></li>
+</ul>
+</li>
+<li><a href="#_some_usage_examples">Some Usage Examples</a>
+<ul class="sectlevel2">
+<li><a href="#_generic_example_1">Generic Example 1</a></li>
+<li><a href="#_generic_example_2">Generic Example 2</a></li>
+<li><a href="#_running_times_of_the_above_examples">Running times of the above examples</a></li>
+</ul>
+</li>
+</ul>
 </div>
 </div>
 <div id="content">
 <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
-<p>The companion paper, entitled BASC: Benchmark Analysis for String Constraints, is available at <a href="https://b4sc.github.io/basc.pdf" class="bare">https://b4sc.github.io/basc.pdf</a> .</p>
-</div>
-<div class="paragraph">
-<p>On these pages we describe how to setup BASC, details on the implementation and how to extend the tool, as well as some examples of currently supported queries.</p>
+<p>The companion paper, entitled BASC: Benchmark Analysis for String Constraints, is available at <a href="https://b4sc.github.io/basc.pdf" class="bare">https://b4sc.github.io/basc.pdf</a>. On these pages we describe how to setup BASC, details on the implementation and how to extend the tool, as well as some examples of currently supported queries.</p>
 </div>
 </div>
 </div>
@@ -1239,7 +1263,7 @@ appscan:appscan:t08.smt2  Satisfied        0.33662    Satisfied          0.32854
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2022-05-15 14:56:21 +0200
+Last updated 2022-05-15 15:21:32 +0200
 </div>
 </div>
 <script type="text/x-mathjax-config">

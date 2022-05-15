@@ -1,12 +1,9 @@
 = BASC: Benchmark Analysis for String Constraints
 We propose BASC: a Benchmark Analysis tool for String Constraints. BASC is implemented in Python 3, and offers a collection of analysis and information extraction tools for a comprehensive data base of string benchmarks (presented in SMT-LIB format), based on an SQL-centred language called QLANG.
-
-The companion paper, entitled BASC: Benchmark Analysis for String Constraints, is available at https://b4sc.github.io/basc.pdf .
-
 :toc: left
 :stem: latexmath
 
-On these pages we describe how to setup BASC, details on the implementation and how to extend the tool, as well as some examples of currently supported queries.
+The companion paper, entitled BASC: Benchmark Analysis for String Constraints, is available at https://b4sc.github.io/basc.pdf. On these pages we describe how to setup BASC, details on the implementation and how to extend the tool, as well as some examples of currently supported queries.
 
 == Installing BASC using the provided Docker Image
 Use GIT to clone our repository
