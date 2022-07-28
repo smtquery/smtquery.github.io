@@ -1,30 +1,50 @@
-= BASC: Benchmark Analysis for String Constraints
-We propose BASC: a Benchmark Analysis tool for String Constraints. BASC is implemented in Python 3, and offers a collection of analysis and information extraction tools for a comprehensive data base of string benchmarks (presented in SMT-LIB format), based on an SQL-centred language called QLANG.
 :toc: left
 :stem: latexmath
+= SMTQuery: A Generic Information Extraction System for String Constraints
+We propose SMTQuery: an SMT-LIB Benchmark analysis tool for string constraints. SMTQuery is implemented in Python 3, and offers a collection of analysis and information extraction tools for a comprehensive data base of string benchmarks (presented in SMT-LIB format), based on an SQL-centred language called QLANG.
 
-The companion paper, entitled BASC: Benchmark Analysis for String Constraints, is available at https://b4sc.github.io/basc.pdf. On these pages we describe how to setup BASC, details on the implementation and how to extend the tool, as well as some examples of currently supported queries.
+The companion paper, entitled A Generic Information Extraction System for String Constraints, is available at https://smtquery.github.io/paper.pdf .
 
-== Installing BASC using the provided Docker Image
+
+On these pages we describe how to setup SMTQuery, details on the implementation and how to extend the tool, as well as some examples of currently supported queries.
+
+== Installing SMTQuery using the provided Docker Image
 Use GIT to clone our repository
  
-    git clone https://github.com/b4sc/code.git
+    git clone https://github.com/smtquery/code.git
 
-Change to the folder `code` and execute 
+Change to the folder `code`. All instructions to build the image are stored in our ``Dockerfile``. It contains two options: 1. Create an image which contains our SMT-LIB instances 2. Create an image which contains our instances, cached ASTs, and SQLite database (i.e. solver results). The  ``Dockerfile`` is preconfigured for option 1. To enable option 2. comment line 35-38 and uncomment line 27-31 as shown below
 
-    docker build . -t basc
+    # Link benchmarks used in the paper
+    # uncomment the following lines to use our benchmarks, database, and cached ASTS
+    RUN wget informatik.uni-kiel.de/~mku/smtquery_data.tar.gz -P /tmp
+    RUN tar xf /tmp/smtquery_data.tar.gz -C /tmp
+    RUN mv /tmp/smtqueryData/db.sql /smtquery
+    RUN mv /tmp/smtqueryData/data/smtfiles /smtquery/data/
+    RUN mv /tmp/smtqueryData/smtquery/data/pickle /smtquery/smtquery/data/
 
-to build the docker image of BASC. This step takes a couple of minutes since it's downloading all required dependencies. Afterwards, we start the container by executing
+    # Only use the benchmarks
+    # uncomment the following lines to only use our benchmarks
+    #RUN wget informatik.uni-kiel.de/~mku/smtquery_instances.tar.gz -P /tmp
+    #RUN tar xf /tmp/smtquery_instances.tar.gz -C /tmp
+    #RUN mv /tmp/smtqueryData/data/smtfiles /smtquery/data/
+    #RUN python3 bin/smtquery initdb 
 
-    docker run -it -d basc /bin/bash
+Now execute 
 
-For convenience, Linux or Mac OSX users are able to use prebuild scripts to run BASC. To to so, execute `chmod +x basc_exe && chmod +x basc_cp` which provides you two easy ways to use scripts for executing QLang and copying QLang's output to your local machine.
+    docker build . -t smtquery
 
-    ./basc_exe
+to build the docker image of SMTQuery. This step takes a couple of minutes since it's downloading all required dependencies. Afterwards, we start the container by executing
 
-prints the prompt, allowing you to execute a QLang query. To pose another query, simply call `./basc_exe` again.
+    docker run -it -d smtquery /bin/bash
 
-    ./basc_cp <destination_folder>
+For convenience, Linux or Mac OSX users are able to use prebuild scripts to run SMTQuery. To to so, execute `chmod +x smtquery_exe && chmod +x smtquery_cp` which provides you two easy ways to use scripts for executing QLang and copying QLang's output to your local machine.
+
+    ./smtquery_exe
+
+prints the prompt, allowing you to execute a QLang query. To pose another query, simply call `./smtquery_exe` again.
+
+    ./smtquery_cp <destination_folder>
 
 allows copying plots, exported SMT-LIB files, and other generated content to your local machine. In particular, it is essential to execute this script after each extraction, in order to observe the results locally. In case you encounter an execution error (which might be the case to system restrictions of running bash scripts), simply follow the next lines.
 
@@ -34,8 +54,118 @@ On Windows machines we have to search for our container id by executing
 
 Afterwards, we are able to execute QLang queries by typing
 
-    docker exec -it <YOUR_CONTAINER_ID> python3 /BASC/bin/smtquery qlang
-    
+    docker exec -it <YOUR_CONTAINER_ID> python3 /smtquery/bin/smtquery qlang
+
+
+Try whether everything is setup as intended by executing
+
+    ./smtquery_exe
+
+respectively on Windows machines
+
+    docker exec -it <YOUR_CONTAINER_ID> python3 /smtquery/bin/smtquery qlang
+
+and afterwards posing the query
+
+    Select Name From pisa Where hasLinears
+
+The result should be similar to the following:
+
+```
+6 out of 12 instances:
+--------------------------------------------------
+['pisa:pisa:pisa-004.smt2']
+['pisa:pisa:pisa-007.smt2']
+['pisa:pisa:pisa-005.smt2']
+['pisa:pisa:pisa-006.smt2']
+['pisa:pisa:pisa-000.smt2']
+['pisa:pisa:pisa-001.smt2']
+```
+
+
+== Installing SMTQuery on a Linux platform
+Make sure your system has ``git python3 python3-pip python3-venv graphviz`` install. Do install these packages (on Ubuntu) run
+
+    apt-get -y update && apt-get install -y --no-install-recommends apt-utils && apt-get -y upgrade
+    apt-get install -y build-essential git python3 python3-pip python3-venv graphviz
+
+To use the setup explained in the companion paper download cvc5 from https://github.com/cvc5/cvc5/releases/latest/download/cvc5-Linux and Z3 from https://github.com/Z3Prover/z3/releases/download/z3-4.10.1/z3-4.10.1-x64-glibc-2.31.zip. Remember the paths where you store their executables.
+
+Change into a folder of your system where you want to store SMTQuery and use GIT to clone our repository
+ 
+    git clone https://github.com/smtquery/code.git
+
+Change to the folder `code` and execute 
+
+    python3 -m venv venv
+    source venv/bin/activate
+    python3 setup.py develop
+    pip3 install sqlalchemy pyyaml z3-solver graphviz celery matplotlib tabulate pathos
+
+to switch into a virtual environment, install the Python packages we need, and setup SMTQuery.
+
+Next we setup the configuration of SMTQuery. Open ``data/conf/conf.yml`` which looks as follows:
+
+```
+solvers:
+  Z3Str3:
+    binary: /usr/bin/z3 
+  Z3Seq:
+    binary: /usr/bin/z3 
+  CVC5:
+    binary: /usr/bin/cvc5
+
+verifiers: [Z3Seq]
+
+runParameters:
+  timeout : 5
+
+SMTStore:
+  name: DBFS
+  root: data/smtfiles
+  engine_string: sqlite:///db.sql
+  intels:
+    - Probes
+
+scheduler:
+  name: multiprocessing
+  cores: 6
+```
+
+The first block names the used ``solvers`` adjust the binary paths according to your system. If you want to use other solvers or remove some of the present ones consider the section below named "Adding new Solvers". ``verifiers`` store a list of solvers being used for our verification process. ``runParameters`` stores the timeout for each solver while solving an instance. ``SMTStore`` configures the database connection. Do not change this part of the configuration file. The ``scheduler`` block configures multiprocessing of our queries and the count of cores SMTQuery is allowed to use.
+
+Next, we fetch the benchmarks we want to analyse and store them in ``data/smtfiles``. If you want to use own benchmarks, stick to the structure explain in section "Adding new Benchmarks". To use the benchmarks of the paper download the following package and place the instances into the aforementioned directory: https://informatik.uni-kiel.de/~mku/smtquery_instances.tar.gz
+
+Now we initialise our database by executing
+
+    python3 bin/smtquery initdb
+
+We can (but you can also skip the next step, since solvers are triggered automatically when results are needed) now also run the registered solvers on all instances to store their results. We execute
+
+    python3 bin/smtquery updateResults
+
+Keep in mind, this process takes time when using the benchmark set used in the paper consisting of more than 100000 instances.
+
+If everything was setup and we stick to our benchmark, we can execute the following query to check correctness.
+
+    Select Name From pisa Where hasLinears
+
+The result should be similar to the following:
+
+```
+6 out of 12 instances:
+--------------------------------------------------
+['pisa:pisa:pisa-004.smt2']
+['pisa:pisa:pisa-007.smt2']
+['pisa:pisa:pisa-005.smt2']
+['pisa:pisa:pisa-006.smt2']
+['pisa:pisa:pisa-000.smt2']
+```
+
+We prepared we package which contains the instances, cached ASTs, and the SQLite database used in the paper. It is available at https://informatik.uni-kiel.de/~mku/smtquery_data.tar.gz
+
+Place the ``db.sql`` into the SMTquery root directory.  The ``data/smtfiles`` contains all instance and ``smtquery/data/pickle`` the cached AST. Simply copy the content of the archive into your root folder. You will now be able to use e.g. the results for solvers reported in the paper.
+
 == Implementation Details and Defining own Predicates, Functions, and Extractors
 We briefly overview the syntax of QLANG, as given in our companion paper, to ease understanding of the following subsections.
 
@@ -51,7 +181,7 @@ We briefly overview the syntax of QLANG, as given in our companion paper, to eas
   \end{array}
 ++++
 
-The semantic of a ``Select`` query is based on the data set stem:[d]. We either choose all benchmarks (*) or we are more precise in picking a particular benchmark set, respectively a corresponding track. The selection is based on a Boolean expression stem:[c], constructed from basic stem:[Predicates]. Currently, BASC implements several default predicates, but our interface allows also defining custom predicates. We use stem:[f_s] to choose a suitable output which can be the instance name, the file's hash value, or simply the SMT-LIB instance.
+The semantic of a ``Select`` query is based on the data set stem:[d]. We either choose all benchmarks (*) or we are more precise in picking a particular benchmark set, respectively a corresponding track. The selection is based on a Boolean expression stem:[c], constructed from basic stem:[Predicates]. Currently, SMTQuery implements several default predicates, but our interface allows also defining custom predicates. We use stem:[f_s] to choose a suitable output which can be the instance name, the file's hash value, or simply the SMT-LIB instance.
 
 The ``Extract`` query allows exporting instances for which a Boolean expression (again involving predicates) evaluates to ``true``. Additionally, while executing an ``Extract`` query, we can directly perform modifications to the extracted instances using a ``Function`` (called apply-function in the following). Finally, the argument stem:[f_e] of an ``Extract`` query (called extractor in the following) specifies the type of output format for the matching (and potentially modified) instances.
 
@@ -143,7 +273,7 @@ def PullExtractor():
 The class primarily consists of a ``getName`` function proving a name for our new function and has to be callable (``__call__``). Within the call we receive the current benchmark and odd to perform modifications according to our needs. It is important to return a potentially modified ``smtfile`` since the output is processed further within our tool. Secondly, we provide a ``PullExtractor`` function which immediately allows using the newly defined apply-function within a custom query.
 
 === Fundamentals on defining extractors
-The extractor allows exporting potentially modified benchmarks in an own format. BASC allows either printing the converted data directly to the terminal or redirecting it to a file using \texttt{smtquery.ui.Outputter}. To name a few examples, we might want to translate the benchmarks into a different format, export some plot, or obtain a modified SMT-LIB instance. To implement an extractor, we proceed similarly to the previously seen ``apply``-function and implement a simple class within ``smtquery.extract``. We provide a name and a function preforming the export based on our AST using the ``Outputter``. We again register our new extractor to the ``PullExtractor`` by simply providing its class name, allowing us to use it in the query language. 
+The extractor allows exporting potentially modified benchmarks in an own format. SMTQuery allows either printing the converted data directly to the terminal or redirecting it to a file using \texttt{smtquery.ui.Outputter}. To name a few examples, we might want to translate the benchmarks into a different format, export some plot, or obtain a modified SMT-LIB instance. To implement an extractor, we proceed similarly to the previously seen ``apply``-function and implement a simple class within ``smtquery.extract``. We provide a name and a function preforming the export based on our AST using the ``Outputter``. We again register our new extractor to the ``PullExtractor`` by simply providing its class name, allowing us to use it in the query language. 
 
 ==== Example: a dummy extractor
 Similar to the definition of a new apply-function for a new extractor we simply provide a class in ``smtquery.extract`` being based on the following structure:
@@ -183,11 +313,11 @@ To be used within the ``Where`` part of the query. All predicates can be combine
 	- ``isQuadratic``:  filters to all instances where each string variable is occurring at most twice.
 	- ``isPatternMatching``:  filters to all instances which only contain word equations of the kind stem:[\mathsf{x} = \alpha] where stem:[\mathsf{x}] is a variable not occurring anywhere else in the present formula and stem:[\alpha] is a string (potentially containing variables other than stem:[\mathsf{x}]).
     - ``hasAtLeast5Variables`` : filters to all instances containing a least 5 string variables.
-	- ``isSAT(s)``: 	filters all instances where stem:[s \in \{\text{CVC4},\text{Z3Str3},\text{Z3Seq}\}] declared satisfiable.
-    - ``isUNSAT(s)``:     filters all instances where stem:[s \in \{\text{CVC4},\text{Z3Str3},\text{Z3Seq}\}] declared unsatisfiable.
-    - ``hasValidModel(s)``:     filters all instances where stem:[s \in \{\text{CVC4},\text{Z3Str3},\text{Z3Seq}\}] returned SAT with a valid model.
-    - ``isCorrect(s)``:     filters all instances where stem:[s \in \{\text{CVC4},\text{Z3Str3},\text{Z3Seq}\}] returned SAT with a valid model or UNSAT as the majority of used solvers.
-    - ``isFaster(s1,s2)``:     filters all instances where stem:[s1,s2 \in \{\text{CVC4},\text{Z3Str3},\text{Z3Seq}\}] and stem:[s1] determined some result quicker than stem:[s2]. 
+	- ``isSAT(s)``: 	filters all instances where stem:[s \in \{\text{CVC5},\text{Z3Str3},\text{Z3Seq}\}] declared satisfiable.
+    - ``isUNSAT(s)``:     filters all instances where stem:[s \in \{\text{CVC5},\text{Z3Str3},\text{Z3Seq}\}] declared unsatisfiable.
+    - ``hasValidModel(s)``:     filters all instances where stem:[s \in \{\text{CVC5},\text{Z3Str3},\text{Z3Seq}\}] returned SAT with a valid model.
+    - ``isCorrect(s)``:     filters all instances where stem:[s \in \{\text{CVC5},\text{Z3Str3},\text{Z3Seq}\}] returned SAT with a valid model or UNSAT as the majority of used solvers.
+    - ``isFaster(s1,s2)``:     filters all instances where stem:[s1,s2 \in \{\text{CVC5},\text{Z3Str3},\text{Z3Seq}\}] and stem:[s1] determined some result quicker than stem:[s2]. 
 
 ==== Functions
 To be used within the ``Apply`` part of the query.
@@ -197,7 +327,6 @@ To be used within the ``Apply`` part of the query.
 - ``Restrict2RegEx``: removes all other predicates than regular expression membership queries.
 - ``RenameVariables``: renames all variables to a standard format (i.e. ``str01``, ``int01``).
 - ``DisjoinConstraints``: splits ``and``-concatenated boolean constraints into separate assertions.
-- ``SortConstraints``: lexicographically sorts all constraints.
 - ``ReduceNegations``: shortens sequences of ``not``, keeping the original polarity.
 - ``EqualsTrue``: simplifies constraints comparing boolean expressions to ``true``.
 
@@ -213,13 +342,17 @@ To be used within the ``Extract`` part of the query.
 - ``Count``:  prints matching instances count and distribution.
 - ``InstanceTable``:  prints the matching instances and solver's results.
 
+All Extractors are currently outputting their data into a subfolder ``output``. Data obtained from a previously executed query will be overwritten. 
+
 == Adding new Benchmarks and Solvers (and reinitialising the database)
-We briefly overview adding new benchmarks and solvers to BASC.
+We briefly overview adding new benchmarks and solvers to SMTQuery.
 
 === Adding new Benchmarks
 New benchmarks following the SMT-LIB standard simply need to be placed into the folder ``data/smtfiles``. We require a certain folder structure when adding new benchmarks though: all benchmarks must be placed in a folder corresponding to the benchmarks' set name containing subfolders naming each individual track of the set. Within these subfolders we store our actual SMT-LIB files. E.g. the benchmark set ``kaluza`` has multiple tracks -- we create a parent folder ``kaluza`` which contains subfolders ``BigSAT``,``BigUNSAT``, ``SmallSAT``, and ``SmallUNSAT`` corresponding to each track, and furthermore containing the individual instances.
 
-Once our new instances are placed in we execute ``bin/smtquery allocateNew`` to register the benchmarks within our database. Keep in mind that these instance do not have an attached solver's result. The result will be added by the time a query asking for a solver's answer is executed automatically.
+Same goes for the newly obtained benchmarks when using the ``SMTLib`` extractor. The new files are placed within the output folder. Simply move them to ``data/smtfiles``. Note, stick to the previously explained structure of benchmark sets.
+
+Once our new instances are placed in we execute ``bin/smtquery allocateNew`` to register the benchmarks within our database. Keep in mind that these instance do not have an attached solver's result. The result will be added by the time a query asking for a solver's answer is executed automatically or by running ``bin/smtquery updateResults``.
 
 === Adding new Solvers
 To add a new solver being capable of parsing SMT-LIB we implement a new class in ``smtquery.solvers`` as following:
@@ -256,11 +389,30 @@ solvers:
     binary: /usr/bin/dummy
 ```
 
+Last, we add our new solver to the ``createSolver`` function in ``smtquery/solvers/__init__.py`` as shown.
+
+```
+def createSolver (name,binarypath):
+    if name == "CVC5":
+        return smtquery.solvers.cvc5.CVC5 (binarypath)
+    elif name == "Z3Str3":
+        return smtquery.solvers.z3.Z3 (binarypath,"Str3","z3str3")
+    elif name == "Z3Seq":
+        return smtquery.solvers.z3.Z3 (binarypath,"Seq","seq")
+    elif name == "Dummy":
+        return smtquery.solvers.dummy.Dummy (binarypath) 
+    else:
+        raise "Unknown Solver Instance"
+
+```
+
 Afterwards our solver is ready to be used in queries (e.g. ``isSAT(Dummy)``).
 
 == Some Usage Examples
 
-We present two examples inspired by the generic examples from our paper. We ran the queries using four different sets of benchmarks, namely AppScan, JOACO-Suite, Pisa, and Woorpje, having a total of 923 instances.
+We present two examples inspired by the generic examples from our paper. We ran the queries using 114468 different SMT-LIB instances gathered in "ZaligVinder: A Generic Test Framework for String Solvers" by Kulczynski et. al. ranging over 19 different sets. These benchmarks were extracted both from real-world and from artificial scenarios. Some benchmarks based on real-world scenarios are related to, e.g., symbolic execution of string heavy programs (Kaluza, PyEx, LeetCode), software verification (Norn), sanitization (PISA), or to detection of software vulnerabilities caused by improper string manipulation (AppScan, JOACO, Stranger). Some artificially produced benchmarks are based either on theoretical insights (Sloth, Woorpje, Light Trau) or on fuzzing algorithms (BanditFuzz, StringFuzz). The running time were achieved on a server running Ubuntu 18.04.4 LTS with two AMD EPYC 7742 processors having a total of 128 cores and 2TB of memory and Python 3.8.
+
+Executing the first query builds up the cached ASTs.
 
 === Generic Example 1 
 
@@ -268,57 +420,64 @@ Given a syntactically restricted subset of string constraints, determine instanc
 
 We can give a concrete case of the problem stated in this generic example. We investigate the distribution of quadratic equations (a well-studied class of word equations, which can be easily solved using the so-called Nielsen transformations) in the benchmarks. 
 
-- For each benchmark, determine all instances consisting of quadratic equations only:
+- For each benchmark, determine all instances consisting of quadratic equations only (Execution time: 4.4 minutes (w/o cache), 70 seconds (w/ cache):
 
         Select Name From * Where isQuadratic
 
 Ouput:
 ```
-['joacosuite:JOACO:ChangePaymentMethod_Vx0.smt2']
-['joacosuite:JOACO:ChangePaymentMethod_VxA2.smt2']
-['joacosuite:JOACO:ChangePaymentMethod_VxA3.smt2']
-['joacosuite:JOACO:ChangePaymentMethod_VxA6.smt2']
+47796 out of 114468 instances:
+--------------------------------------------------
+['PyEx_All:petercpyexdoccav17zzpymongobsonencode:f8fe93f6fc26b22dbc83eb3a70c2c7ea9d9471652e3f6fd9dad545d3.smt2']
+['PyEx_All:petercpyexdoccav17zzpymongobsonencode:d98348897af82d9f460a9dd25d44f01c1c0f7a4cbcf92bf018496499.smt2']
+['PyEx_All:petercpyexdoccav17zzpymongobsonencode:70cf7e1a30dec00f3fc7a3585f05eea9b3a4ebc40741bfaa28b11c37.smt2']
+['PyEx_All:petercpyexdoccav17zzpymongoloads:de256d8520bc7ec82e56b67948fea8ababd17a407981ca49ef3d2d0a.smt2']
+['PyEx_All:petercpyexdoccav17zzpymongoloads:c0a6b265268008b1ae333ba9df317140f224f16135f070e5e0933479.smt2']
+['PyEx_All:petercpyexdoccav17zzhttplib2requestheaders:abf4e2818d2d2652a51de876c1211528daa6bf91c5246dba80a67b28.smt2']
+['PyEx_All:petercpyexdoccav17zzhttplib2requestheaders:879a301f0920a166a05fd420094c091868774ec5f8697f112d132add.smt2']
+['PyEx_All:petercpyexdoccav17tdrequestsurlauth:12a78106b3b0ab00b17765f83e8b876a8a8b9ac4ffb171a15fb6d4bd.smt2']
+['PyEx_All:petercpyexdoccav17tdrequestsurlauth:0c3bb72822d747fde3315a253617212cec256b7e3235cd2f75ca0a5b.smt2']
 ...
 ```
 
-- Count how many such instances are in each benchmark, and compute the ratio between the number of quadratic instances and the overall number of instances in each benchmark (e.g. for JOACO-Suite).
+- Count how many such instances are in each benchmark, and compute the ratio between the number of quadratic instances and the overall number of instances in each benchmark (e.g. for JOACO-Suite) (Execution time: 0.6 seconds).
 
         Extract Count From joacosuite Where isQuadratic
 
 Ouput:
 ```
-joacosuite:*
-
-Total matching instances: 51 of 94 within the selected set (54.25531914893617%).
+Total matching instances: 51 of 94 within the selected set (54.25531914893617%). 
 ```
 
 
 Motivated by our paper from CAV 2021 (Berzish et. al.: An SMT Solver for Regular Expressions and Linear Arithmetic over String Length), we addressed the following concrete case of Example 1. We want to determine all instances containing regex-membership predicates, and their distribution within benchmarks. 
 
-- For each benchmark, determine all instances containing regex-membership predicates:
+- For each benchmark, determine all instances containing regex-membership predicates (Execution time: 70 seconds):
 
     Select Name From * Where hasRegex
 
 Output:
 
 ```
-['appscan:appscan:t02.smt2']
-['appscan:appscan:t03.smt2']
-['appscan:appscan:t04.smt2']
-['appscan:appscan:t05.smt2']
-['appscan:appscan:t07.smt2']
+57257 out of 114468 instances:
+--------------------------------------------------
+['slothtests:sloth:norn-benchmark-9.smt2']
+['slothtests:sloth:simple-cvc-smtlib.smt2']
+['slothtests:sloth:escapeSequences-1a.smt2']
+['slothtests:sloth:norn-benchmark-9e.smt2']
+['slothtests:sloth:epsilon-3.smt2']
+['slothtests:sloth:norn-benchmark-9j.smt2']
+['slothtests:sloth:cvc_replace_4062.smt2']
 ...
 ```
 
-- Count how many such instances are in each benchmark, and compute the ratio between the number of instances containing regex-membership predicates and the overall number of instances in each benchmark (e.g. for JOACO-Suite).
+- Count how many such instances are in each benchmark, and compute the ratio between the number of instances containing regex-membership predicates and the overall number of instances in each benchmark (e.g. for JOACO-Suite) (Execution time: 0.6 seconds).
 
     Extract Count From joacosuite Where hasRegex
 
 Output:
 
 ```
-joacosuite:*
-
 Total matching instances: 76 of 94 within the selected set (80.85106382978724%).
 ```
 
@@ -327,129 +486,99 @@ Total matching instances: 76 of 94 within the selected set (80.85106382978724%).
 
 For a given string-solver, understand the properties of instances on which it performs particularly well, and on which it performs badly (also in comparison to other solvers).
 
-We can give a concrete case related to the problem stated in this generic example. We would be interested in finding the set C of all the instances on which CVC4 provides a correct answer and Z3str3 either provides a wrong answer or is slower in providing the correct answer and the instances the set Z of all the instances on which Z3str3 provides a correct answer and CVC4 either provides a wrong answer or is slower in providing the correct answer. Then, for each of these sets, detect the number (and distribution) of instances which are non-quadratic and the number (and distribution) of instances containing regex-membership predicates. 
+We can give a concrete case related to the problem stated in this generic example. We would be interested in finding the set C of all the instances on which CVC5 provides a correct answer and Z3str3 either provides a wrong answer or is slower in providing the correct answer and the instances the set Z of all the instances on which Z3str3 provides a correct answer and CVC5 either provides a wrong answer or is slower in providing the correct answer. Then, for each of these sets, detect the number (and distribution) of instances which are non-quadratic and the number (and distribution) of instances containing regex-membership predicates. 
 
-- Collect, for each instance, the answers given by all solvers included in our tool. The supposedly-correct answer for this instance is the one given by the majority of these solvers in UNSAT cases and indicated by a correct model in case of SAT instances.
+- Collect, for each instance, the answers given by all solvers included in our tool. The supposedly-correct answer for this instance is the one given by the majority of these solvers in UNSAT cases and indicated by a correct model in case of SAT instances. (Execution time: 17 minutes)
     
-    Extract InstanceTable From * Where ((isCorrect(CVC4) and isCorrect(Z3Str3)) and isCorrect(Z3Seq)) 
+    Extract InstanceTable From * Where ((isCorrect(CVC5) and isCorrect(Z3Str3)) and isCorrect(Z3Seq)) 
 
 
 Output:
 
-```
-Instance                  Result CVC4      Time CVC4  Result Z3Seq      Time Z3Seq  Result Z3Str3      Time Z3Str3
-------------------------  -------------  -----------  --------------  ------------  ---------------  -------------
-appscan:appscan:t02.smt2  Satisfied        0.0458425  Satisfied          0.150052   Satisfied            0.0443905
-appscan:appscan:t06.smt2  Satisfied        0.028693   Satisfied          0.0362182  Satisfied            0.028693
-appscan:appscan:t07.smt2  Satisfied        0.0344792  Satisfied          0.0381027  Satisfied            0.0361539
-appscan:appscan:t08.smt2  Satisfied        0.33662    Satisfied          0.328544   Satisfied            0.173992
+```                                                                                                           Result CVC5      Time CVC5  Result Z3Seq      Time Z3Seq  Result Z3Str3      Time Z3Str3
+-------------------------------------------------------------------------------------------------------------------  -------------  -----------  --------------  ------------  ---------------  -------------
+PyEx_All:petercpyexdoccav17zzpymongobsonencode:f8fe93f6fc26b22dbc83eb3a70c2c7ea9d9471652e3f6fd9dad545d3.smt2         Satisfied       0.0219098   Satisfied          0.0355985  Satisfied            0.0260986
+PyEx_All:petercpyexdoccav17zzpymongobsonencode:d98348897af82d9f460a9dd25d44f01c1c0f7a4cbcf92bf018496499.smt2         Satisfied       0.0178244   Satisfied          0.0349659  Satisfied            0.0304241
+PyEx_All:petercpyexdoccav17zzpymongobsonencode:70cf7e1a30dec00f3fc7a3585f05eea9b3a4ebc40741bfaa28b11c37.smt2         Satisfied       0.0115088   Satisfied          0.0290483  Satisfied            0.0278699
+PyEx_All:petercpyexdoccav17zzpymongobsonencode:1931f11279d92eaaa4b629dd48a91867ce21bb72eca357460833e9ae.smt2         NotSatisfied    0.0122057   NotSatisfied       0.0477649  NotSatisfied         0.0218629
+PyEx_All:petercpyexdoccav17zzpymongoloads:de256d8520bc7ec82e56b67948fea8ababd17a407981ca49ef3d2d0a.smt2              Satisfied       0.0130903   Satisfied          0.0315387  Satisfied            0.0278435
+PyEx_All:petercpyexdoccav17zzpymongoloads:c0a6b265268008b1ae333ba9df317140f224f16135f070e5e0933479.smt2              Satisfied       0.0176178   Satisfied          0.0744072  Satisfied            0.0311894
+PyEx_All:petercpyexdoccav17zzhttplib2requestheaders:c1e1aae3eff37bf61177fd26ca115400ee4963dd74dbed6d7564f933.smt2    NotSatisfied    0.0429762   NotSatisfied       0.029438   NotSatisfied         0.0626745
 ```
 
-- Select for CVC4 all instances where CVC4 gives the right answer and either Z3str3 gives the wrong answer or it gives the right answer slower.
+- Select for CVC5 all instances where CVC5 gives the right answer and either Z3str3 gives the wrong answer or it gives the right answer slower (Execution Time: 15 minutes).
 
-    Select Name From * Where ((isCorrect(CVC4) and (not isCorrect(Z3Str3))) or (isCorrect(Z3Str3) and isFaster(CVC4,Z3Str3)))
+    Select Name From * Where ((isCorrect(CVC5) and (not isCorrect(Z3Str3))) or (isCorrect(Z3Str3) and isFaster(CVC5,Z3Str3)))
 
 Output:
 
 ```
-['appscan:appscan:t01.smt2']
-['appscan:appscan:t03.smt2']
-['appscan:appscan:t04.smt2']
-['appscan:appscan:t05.smt2']
-['appscan:appscan:t06.smt2']
-['appscan:appscan:t07.smt2']
-['joacosuite:JOACO:AuthorizationServlet0.smt2']
-['joacosuite:JOACO:BackDoors0.smt2']
-['joacosuite:JOACO:BlindNumericSqlInjection0.smt2']
-['joacosuite:JOACO:BlindStringSqlInjection0.smt2']
-['joacosuite:JOACO:ChangePaymentMethod_Vx0.smt2']
-['joacosuite:JOACO:ChangePaymentMethod_VxA0.smt2']
-['joacosuite:JOACO:ChangePaymentMethod_VxA2.smt2']
-['joacosuite:JOACO:ChangePaymentMethod_VxA3.smt2']
-['joacosuite:JOACO:ChangePaymentMethod_VxA6.smt2']
+96971 out of 114468 instances:
+--------------------------------------------------
+['PyEx_All:petercpyexdoccav17zzpymongobsonencode:f8fe93f6fc26b22dbc83eb3a70c2c7ea9d9471652e3f6fd9dad545d3.smt2']
+['PyEx_All:petercpyexdoccav17zzpymongobsonencode:d98348897af82d9f460a9dd25d44f01c1c0f7a4cbcf92bf018496499.smt2']
+['PyEx_All:petercpyexdoccav17zzpymongobsonencode:70cf7e1a30dec00f3fc7a3585f05eea9b3a4ebc40741bfaa28b11c37.smt2']
+['PyEx_All:petercpyexdoccav17zzpymongobsonencode:1931f11279d92eaaa4b629dd48a91867ce21bb72eca357460833e9ae.smt2']
+['PyEx_All:petercpyexdoccav17zzpymongoloads:de256d8520bc7ec82e56b67948fea8ababd17a407981ca49ef3d2d0a.smt2']
+['PyEx_All:petercpyexdoccav17zzpymongoloads:c0a6b265268008b1ae333ba9df317140f224f16135f070e5e0933479.smt2']
 ...
 ```
 
 
-- Count how many of the instances computed in step 2 are quadratic and how many contain regex-membership predicates.
+- Count how many of the instances computed in step 2 are quadratic and how many contain regex-membership predicates. (Execution time: 15 minutes each)
 
-    Extract Count From * Where (((isCorrect(CVC4) and (not isCorrect(Z3Str3))) or (isCorrect(Z3Str3) and isFaster(CVC4,Z3Str3))) and isQuadratic)
+    Extract Count From * Where (((isCorrect(CVC5) and (not isCorrect(Z3Str3))) or (isCorrect(Z3Str3) and isFaster(CVC5,Z3Str3))) and isQuadratic)
 
-    Extract Count From * Where (((isCorrect(CVC4) and (not isCorrect(Z3Str3))) or (isCorrect(Z3Str3) and isFaster(CVC4,Z3Str3))) and hasRegex)
+    Extract Count From * Where (((isCorrect(CVC5) and (not isCorrect(Z3Str3))) or (isCorrect(Z3Str3) and isFaster(CVC5,Z3Str3))) and hasRegex)
 
 Output:
 
 ```
-Total matching instances: 194 of 923 within the selected set (21.018418201516795%). 
+Total matching instances: 44696 of 114468 within the selected set (39.046720480833066%).
 ```
 
 and
 
 ```
-Total matching instances: 53 of 923 within the selected set (5.742145178764897%).
+Total matching instances: 48250 of 114468 within the selected set (42.15151832826641%).
 ```
 
 
 
-- Select for Z3str3 all instances where Z3str3 gives the right answer and either CVC4 gives the wrong answer or it gives the right answer slower.
+- Select for Z3str3 all instances where Z3str3 gives the right answer and either CVC5 gives the wrong answer or it gives the right answer slower (Execution time: 16 minutes).
 
-    Select Name From * Where ((isCorrect(Z3Str3) and (not isCorrect(CVC4))) or (isCorrect(CVC4) and isFaster(Z3Str3,CVC4)))
+    Select Name From * Where ((isCorrect(Z3Str3) and (not isCorrect(CVC5))) or (isCorrect(CVC5) and isFaster(Z3Str3,CVC5)))
 
 Output:
 
 ```
-['appscan:appscan:t02.smt2']
-['appscan:appscan:t06.smt2']
-['appscan:appscan:t08.smt2']
-['joacosuite:JOACO:AuthorizationServlet0.smt2']
-['joacosuite:JOACO:CommentDataServlet1.smt2']
-['joacosuite:JOACO:CommentDataServlet3.smt2']
-['joacosuite:JOACO:FileServlet1.smt2']
-['joacosuite:JOACO:ListTag0.smt2']
-['joacosuite:JOACO:ListTag1.smt2']
+16325 out of 114468 instances:
+--------------------------------------------------
+['PyEx_All:petercpyexdoccav17zzhttplib2requestheaders:03f1fb5477c155feb31e2186df2c40228206c726485cd61c56d2df7a.smt2']
+['PyEx_All:petercpyexdoccav17zzhttplib2requestheaders:0cfb88e6752121866d7a9a1277b536fd50498ebf430f7de856b4934f.smt2']
+['PyEx_All:petercpyexdoccav17zzhttplib2requestheaders:11a23f469feb0d987b6beb1cd5472757735f0d1c6110fb47842c8877.smt2']
+['PyEx_All:petercpyexdoccav17zzhttplib2requestheaders:1af7511226dbc3e447f4c0283755babdd8001bf855d272967dc8f6e7.smt2']
+['PyEx_All:petercpyexdoccav17zzhttplib2requestheaders:769e7deec41c433bfaaed7fec2e77675925aea46fe3eb60fcd41002f.smt2']
+['PyEx_All:petercpyexdoccav17zzhttplib2requestheaders:76bbc89ecb64b905ec6695cf918734d7d95e189038848afce3e162ab.smt2']
+['PyEx_All:petercpyexdoccav17zzhttplib2requestheaders:1c0bb414ca244d8c2ee162800243df6ac19c13b72080ae3c70b8b0f2.smt2']
 ...
 ```
 
-- Count how many of the instances computed in step 4 are quadratic and how many contain regex-membership predicates.
+- Count how many of the instances computed in step 4 are quadratic and how many contain regex-membership predicates (Execution time: 17 minutes each).
 
-    Extract Count From * Where (((isCorrect(Z3Str3) and (not isCorrect(CVC4))) or (isCorrect(CVC4) and isFaster(Z3Str3,CVC4))) and isQuadratic)
+    Extract Count From * Where (((isCorrect(Z3Str3) and (not isCorrect(CVC5))) or (isCorrect(CVC5) and isFaster(Z3Str3,CVC5))) and isQuadratic)
 
-    Extract Count From * Where (((isCorrect(Z3Str3) and (not isCorrect(CVC4))) or (isCorrect(CVC4) and isFaster(Z3Str3,CVC4))) and hasRegex)
+    Extract Count From * Where (((isCorrect(Z3Str3) and (not isCorrect(CVC5))) or (isCorrect(CVC5) and isFaster(Z3Str3,CVC5))) and hasRegex)
 
 Output:
 
 ```
-Total matching instances: 34 of 923 within the selected set (3.6836403033586134%). 
+Total matching instances: 2822 of 114468 within the selected set (2.465317818080162%).
 ```
 
 and
 
 ```
-
-
-Total matching instances: 19 of 923 within the selected set (2.058504875406284%). 
+Total matching instances: 8037 of 114468 within the selected set (7.021176223922843%).
 ```
-
-=== Running times of the above examples 
-
-We obtained the following running times by executing all queries in a sequence:
-
-|===
-| Query | Running time w/o cache (seconds) | Running time with cache (seconds)
-| ``Select Name From * Where isQuadratic`` | 188.56 | 5.07
-| ``Extract Count From joacosuite Where isQuadratic`` | 0.63 | 0.64
-| ``Select Name From * Where hasRegex`` | 4.87 | 5.03
-| ``Extract Count From joacosuite Where hasRegex`` | 0.62 | 0.64
-| ``Extract InstanceTable From * Where ((isCorrect(CVC4) and isCorrect(Z3Str3)) and isCorrect(Z3Seq))`` | 1585.29 | 15.7
-| ``Select Name From * Where ((isCorrect(CVC4) and (not isCorrect(Z3Str3))) or (isCorrect(Z3Str3) and isFaster(CVC4,Z3Str3)))`` | 15.95 | 15.85
-| ``Extract Count From * Where (((isCorrect(CVC4) and (not isCorrect(Z3Str3))) or (isCorrect(Z3Str3) and isFaster(CVC4,Z3Str3))) and isQuadratic)`` | 20.71 | 20.02
-| ``Extract Count From * Where (((isCorrect(CVC4) and (not isCorrect(Z3Str3))) or (isCorrect(Z3Str3) and isFaster(CVC4,Z3Str3))) and hasRegex)`` | 20.88 | 20.66
-| ``Select Name From * Where ((isCorrect(Z3Str3) and (not isCorrect(CVC4))) or (isCorrect(CVC4) and isFaster(Z3Str3,CVC4)))`` | 17.06 | 16.47
-| ``Extract Count From * Where (((isCorrect(Z3Str3) and (not isCorrect(CVC4))) or (isCorrect(CVC4) and isFaster(Z3Str3,CVC4))) and isQuadratic)`` | 19.37 | 19.33
-| ``Extract Count From * Where (((isCorrect(Z3Str3) and (not isCorrect(CVC4))) or (isCorrect(CVC4) and isFaster(Z3Str3,CVC4))) and hasRegex)`` | 19.41 | 19.79
-|===
-
-Note, the later queries use already cached data which causes almost identical running times for some of them.
-
-Also note that in numerous instances, where one is interested in analysing the strengths or weaknesses of solvers, we were not necessarily interested in having extremely fast query running times (as long as these times stay reasonable), but rather in having a tool that provides a correct more in-depth analysis of the properties (mostly, of combinatorial or automata theoretic nature) of the instances on which these solvers perform well or badly, respectively.
 
