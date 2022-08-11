@@ -308,7 +308,7 @@ To be used within the ``Where`` part of the query. All predicates can be combine
 	- ``hasLinears``:  filters to all instances which contain linear length constraints.
 	- ``hasRegex``:  filters to all instances which contain regular membership predicates.
 	- ``isSimpleRegex``:  filters to all instances which are of the simple regular expression fragment (see _String theories involving regular membership predicates: From practice to theory and back_ by Berzish et. al.).
-	- ``isSimpleRegexConcatenation``:  filters to all instances which are of the simple regular expression fragment with concatenation (see _String theories involving regular membership predicates: From practice to theory and back_ by Berzish et. al.).
+	- ``isSimRegexConcatenation``:  filters to all instances which are of the simple regular expression fragment with concatenation (see _String theories involving regular membership predicates: From practice to theory and back_ by Berzish et. al.).
 	- ``isUpperBounded``:  filters to all instances where the syntax of the formula allows obtaining a length upper bound for each string variable.
 	- ``isQuadratic``:  filters to all instances where each string variable is occurring at most twice.
 	- ``isPatternMatching``:  filters to all instances which only contain word equations of the kind stem:[\mathsf{x} = \alpha] where stem:[\mathsf{x}] is a variable not occurring anywhere else in the present formula and stem:[\alpha] is a string (potentially containing variables other than stem:[\mathsf{x}]).
