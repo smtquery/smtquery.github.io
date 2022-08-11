@@ -348,7 +348,7 @@ All Extractors are currently outputting their data into a subfolder ``output``. 
 We briefly overview adding new benchmarks and solvers to SMTQuery.
 
 === Adding new Benchmarks
-New benchmarks following the SMT-LIB standard simply need to be placed into the folder ``data/smtfiles``. We require a certain folder structure when adding new benchmarks though: all benchmarks must be placed in a folder corresponding to the benchmarks' set name containing subfolders naming each individual track of the set. Within these subfolders we store our actual SMT-LIB files. E.g. the benchmark set ``kaluza`` has multiple tracks -- we create a parent folder ``kaluza`` which contains subfolders ``BigSAT``,``BigUNSAT``, ``SmallSAT``, and ``SmallUNSAT`` corresponding to each track, and furthermore containing the individual instances.
+New benchmarks following the SMT-LIB standard simply need to be placed into the folder ``data/smtfiles``. We require a certain folder structure when adding new benchmarks though: all benchmarks must be placed in a folder corresponding to the benchmarks' set name containing subfolders naming each individual track of the set. Within these subfolders we store our actual SMT-LIB files. E.g. the benchmark set ``kaluza`` has multiple tracks -- we create a parent folder ``kaluza`` which contains subfolders ``BigSAT``,``BigUNSAT``, ``SmallSAT``, and ``SmallUNSAT`` corresponding to each track, and furthermore containing the individual instances. Note, bechmark set and track folder names are restricted to alphanumeric characters.
 
 Same goes for the newly obtained benchmarks when using the ``SMTLib`` extractor. The new files are placed within the output folder. Simply move them to ``data/smtfiles``. Note, stick to the previously explained structure of benchmark sets.
 
@@ -420,7 +420,7 @@ Given a syntactically restricted subset of string constraints, determine instanc
 
 We can give a concrete case of the problem stated in this generic example. We investigate the distribution of quadratic equations (a well-studied class of word equations, which can be easily solved using the so-called Nielsen transformations) in the benchmarks. 
 
-- For each benchmark, determine all instances consisting of quadratic equations only (Execution time: 4.4 minutes (w/o cache), 70 seconds (w/ cache):
+- For each benchmark, determine all instances consisting of quadratic equations only (Execution time: 4.4 minutes (w/o cache), 63 seconds (w/ cache):
 
         Select Name From * Where isQuadratic
 
@@ -495,15 +495,16 @@ We can give a concrete case related to the problem stated in this generic exampl
 
 Output:
 
-```                                                                                                           Result CVC5      Time CVC5  Result Z3Seq      Time Z3Seq  Result Z3Str3      Time Z3Str3
--------------------------------------------------------------------------------------------------------------------  -------------  -----------  --------------  ------------  ---------------  -------------
-PyEx_All:petercpyexdoccav17zzpymongobsonencode:f8fe93f6fc26b22dbc83eb3a70c2c7ea9d9471652e3f6fd9dad545d3.smt2         Satisfied       0.0219098   Satisfied          0.0355985  Satisfied            0.0260986
-PyEx_All:petercpyexdoccav17zzpymongobsonencode:d98348897af82d9f460a9dd25d44f01c1c0f7a4cbcf92bf018496499.smt2         Satisfied       0.0178244   Satisfied          0.0349659  Satisfied            0.0304241
-PyEx_All:petercpyexdoccav17zzpymongobsonencode:70cf7e1a30dec00f3fc7a3585f05eea9b3a4ebc40741bfaa28b11c37.smt2         Satisfied       0.0115088   Satisfied          0.0290483  Satisfied            0.0278699
-PyEx_All:petercpyexdoccav17zzpymongobsonencode:1931f11279d92eaaa4b629dd48a91867ce21bb72eca357460833e9ae.smt2         NotSatisfied    0.0122057   NotSatisfied       0.0477649  NotSatisfied         0.0218629
-PyEx_All:petercpyexdoccav17zzpymongoloads:de256d8520bc7ec82e56b67948fea8ababd17a407981ca49ef3d2d0a.smt2              Satisfied       0.0130903   Satisfied          0.0315387  Satisfied            0.0278435
-PyEx_All:petercpyexdoccav17zzpymongoloads:c0a6b265268008b1ae333ba9df317140f224f16135f070e5e0933479.smt2              Satisfied       0.0176178   Satisfied          0.0744072  Satisfied            0.0311894
-PyEx_All:petercpyexdoccav17zzhttplib2requestheaders:c1e1aae3eff37bf61177fd26ca115400ee4963dd74dbed6d7564f933.smt2    NotSatisfied    0.0429762   NotSatisfied       0.029438   NotSatisfied         0.0626745
+```
+Waiting for results ...
+Instance                 Result CVC5      Time CVC5  Result Z3Seq      Time Z3Seq  Result Z3Str3      Time Z3Str3
+-----------------------  -------------  -----------  --------------  ------------  ---------------  -------------
+pisa:pisa:pisa-011.smt2  Satisfied       0.00897606  Satisfied          0.0259043  Satisfied            0.0344819
+pisa:pisa:pisa-009.smt2  Satisfied       0.0191097   Satisfied          0.0276228  Satisfied            0.028013
+pisa:pisa:pisa-010.smt2  Satisfied       0.0167181   Satisfied          0.0258694  Satisfied            0.0266274
+pisa:pisa:pisa-002.smt2  Satisfied       0.0235912   Satisfied          0.116755   Satisfied            0.0386019
+pisa:pisa:pisa-000.smt2  Satisfied       0.0695572   Satisfied          0.0426866  Satisfied            0.0492182
+...
 ```
 
 - Select for CVC5 all instances where CVC5 gives the right answer and either Z3str3 gives the wrong answer or it gives the right answer slower (Execution Time: 15 minutes).
@@ -513,7 +514,7 @@ PyEx_All:petercpyexdoccav17zzhttplib2requestheaders:c1e1aae3eff37bf61177fd26ca11
 Output:
 
 ```
-96971 out of 114468 instances:
+94676 out of 114468 instances:
 --------------------------------------------------
 ['PyEx_All:petercpyexdoccav17zzpymongobsonencode:f8fe93f6fc26b22dbc83eb3a70c2c7ea9d9471652e3f6fd9dad545d3.smt2']
 ['PyEx_All:petercpyexdoccav17zzpymongobsonencode:d98348897af82d9f460a9dd25d44f01c1c0f7a4cbcf92bf018496499.smt2']
@@ -534,13 +535,13 @@ Output:
 Output:
 
 ```
-Total matching instances: 44696 of 114468 within the selected set (39.046720480833066%).
+Total matching instances: 44342 of 114468 within the selected set (38.73%).
 ```
 
 and
 
 ```
-Total matching instances: 48250 of 114468 within the selected set (42.15151832826641%).
+Total matching instances: 47070 of 114468 within the selected set (41.12%).
 ```
 
 
@@ -573,12 +574,12 @@ Output:
 Output:
 
 ```
-Total matching instances: 2822 of 114468 within the selected set (2.465317818080162%).
+Total matching instances: 3149 of 114468 within the selected set (2.75%)
 ```
 
 and
 
 ```
-Total matching instances: 8037 of 114468 within the selected set (7.021176223922843%).
+Total matching instances: 9189 of 114468 within the selected set (8.02%).
 ```
 
